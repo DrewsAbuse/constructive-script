@@ -30,9 +30,9 @@ type VerifyIsSecondEqToFirstFromOtherChunks<
 
 type GetArgumentForFirstFn<Fns extends AnyFn[]> = Parameters<Fns[0]>[0];
 
-// ======================
-// Type-Level Tests
-// ======================
+// ==================
+// =Type-Level Tests=
+// ==================
 const boolInstance: boolean = true;
 const numInstance: number = 1;
 const strInstance: string = '';
@@ -61,11 +61,11 @@ expectType<VerifyTest>([logicTrue, logicTrue, logicTrue, logicTrue]);
 type VerifyFnsFirstArg = GetArgumentForFirstFn<Fns>;
 expectType<VerifyFnsFirstArg>(false);
 
-// ======================
-// Implementation
-// ======================
+// ================
+// =Implementation=
+// ================
 
-const pipe = <
+export const pipe = <
   Fns extends AnyFn[],
   Output extends AnyFn,
   ArgToReturn2DArray extends VerifyIsSecondEqToFirstFromOtherChunks<
@@ -103,3 +103,84 @@ const boolToFn = (x: boolean) => (x ? numToStr : strToNum);
 const result2 = pipe({input: 1, output: boolToFn}, numToStr, strToNum, numToBool);
 expectType<typeof result2>((x: number) => x.toString());
 expectType<typeof result2>((x: string) => parseInt(x, 10));
+
+export const abusePipe = <
+  Fns extends AnyFn[],
+  Output extends AnyFn,
+  ArgToReturn2DArray extends VerifyIsSecondEqToFirstFromOtherChunks<
+    FormFnListCreate2DListWithArgThenReturn<[...Fns, Output]>
+  >,
+  IsPipeCorrect extends AllTrue<ArgToReturn2DArray>,
+  Input extends If<IsPipeCorrect, GetArgumentForFirstFn<Fns>, never>,
+>(
+  input: Input,
+  ...fns: [...Fns, Output]
+): ReturnType<Output> => fns.reduce((acc, fn) => fn(acc), input);
+
+const result4 = abusePipe(1, add1, add2, add3);
+expectType<typeof result4>(6);
+
+const result5 = abusePipe(1, numToStr, strToNum, numToBool, boolToFn);
+expectType<typeof result5>((x: number) => x.toString());
+expectType<typeof result5>((x: string) => parseInt(x, 10));
+
+const result6 = abusePipe(1, add1, add2, add3, numToStr);
+expectType<typeof result6>('6');
+
+export const abusePipeArr = <
+  Fns extends AnyFn[],
+  Output extends AnyFn,
+  ArgToReturn2DArray extends VerifyIsSecondEqToFirstFromOtherChunks<
+    FormFnListCreate2DListWithArgThenReturn<[...Fns, Output]>
+  >,
+  IsPipeCorrect extends AllTrue<ArgToReturn2DArray>,
+  Input extends If<IsPipeCorrect, GetArgumentForFirstFn<Fns>, never>,
+>(
+  input: Input,
+  fns: readonly [...Fns, Output]
+): ReturnType<Output> => fns.reduce((acc, fn) => fn(acc), input);
+
+const fns1 = [add1, add2, add3] as const;
+
+const result7 = abusePipeArr(1, fns1);
+expectType<typeof result7>(6);
+
+const fns2 = [numToStr, strToNum, numToBool, boolToFn] as const;
+
+const result8 = abusePipeArr(1, fns2);
+expectType<typeof result8>((x: number) => x.toString());
+
+export const abusePipeClj =
+  <
+    Fns extends AnyFn[],
+    Output extends AnyFn,
+    ArgToReturn2DArray extends VerifyIsSecondEqToFirstFromOtherChunks<
+      FormFnListCreate2DListWithArgThenReturn<[...Fns, Output]>
+    >,
+    IsPipeCorrect extends AllTrue<ArgToReturn2DArray>,
+    Input extends If<IsPipeCorrect, GetArgumentForFirstFn<Fns>, never>,
+  >(
+    ...fns: [...Fns, Output]
+  ): ((input: Input) => ReturnType<Output>) =>
+  (input: Input) =>
+    fns.reduce((acc, fn) => fn(acc), input);
+
+const result9 = abusePipeClj(add1, add2, add3)(1);
+expectType<typeof result9>(6);
+
+const someNum = 1;
+
+const result10 = abusePipeClj(numToStr, strToNum, numToBool, boolToFn)(someNum);
+expectType<typeof result10>((x: number) => x.toString());
+
+console.log({
+  result,
+  result2,
+  result4,
+  result5,
+  result6,
+  result7,
+  result8,
+  result9,
+  result10,
+});
