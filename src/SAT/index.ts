@@ -2,9 +2,6 @@
 // =SAT Expressions=
 // =================
 
-import {toCNF} from './cnf.ts';
-import {exprToLogicString} from './to-string.ts';
-
 export type SATBool = {kind: 'bool'; value: boolean};
 export type SATVar = {kind: 'var'; name: string};
 export type SATNot = {kind: 'not'; expr: SATExpr};
@@ -13,13 +10,13 @@ export type SATOr = {kind: 'or'; children: SATExpr[]};
 export type SATImplies = {kind: 'implies'; left: SATExpr; right: SATExpr};
 export type SATEquivalent = {kind: 'equivalent'; left: SATExpr; right: SATExpr};
 
+export type SATExpr = SATBool | SATVar | SATNot | SATAnd | SATOr | SATImplies | SATEquivalent;
+
 export type NarySATExpr = SATAnd | SATOr;
 export type BinarySATExpr = SATImplies | SATEquivalent;
 
 export type CNFAllowedExpr = SATBool | SATVar | SATNot | NarySATExpr;
 export type CNFExpr = SATAnd & {children: CNFAllowedExpr[]};
-
-export type SATExpr = SATBool | SATVar | SATNot | SATAnd | SATOr | SATImplies | SATEquivalent;
 
 export const satBool = (value: boolean): SATBool => {
   return {kind: 'bool', value};
@@ -233,28 +230,6 @@ export const identityResult = <T>(result: T): {result: T} => {
 //  =SAT Solving=
 //  =============
 
-export const evalSAT = (expr: SATExpr, assignment: Record<string, boolean>): boolean => {
-  switch (expr.kind) {
-    case 'bool':
-      return expr.value;
-    case 'var':
-      if (expr.name in assignment) {
-        return assignment[expr.name];
-      }
-      throw new Error(`Variable ${expr.name} has no assigned value.`);
-    case 'not':
-      return !evalSAT(expr.expr, assignment);
-    case 'and':
-      return expr.children.every(child => evalSAT(child, assignment));
-    case 'or':
-      return expr.children.some(child => evalSAT(child, assignment));
-    case 'implies':
-      return !evalSAT(expr.left, assignment) || evalSAT(expr.right, assignment);
-    case 'equivalent':
-      return evalSAT(expr.left, assignment) === evalSAT(expr.right, assignment);
-  }
-};
-
 export const evalCNF = (expr: CNFExpr, assignment: Record<string, boolean>) =>
   traversExpressionsTree({
     expr,
@@ -335,13 +310,3 @@ export const solve = (formula: CNFExpr): Record<string, boolean> | null => {
 
   return null;
 };
-
-const expr = satAnd(
-  satImplies(satOr(satVar('p'), satVar('q')), satAnd(satVar('r'), satVar('s'))),
-  satEquivalent(satVar('t'), satVar('u'))
-);
-
-const cnf = toCNF(expr);
-console.log('cnf:', exprToLogicString(cnf));
-
-console.log('solve:', solve(cnf));
